@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 05/21/2020 03:49:21 PM
+// Create Date: 05/22/2020 09:34:47 AM
 // Design Name: 
 // Module Name: gateStateMult
 // Project Name: 
@@ -29,9 +29,10 @@ typedef struct{
     logic [7:0] ab;
     logic[7:0] ba;
     logic[7:0]b;
+	logic[7:0]negB;
     }compNumTemp;
 
-module gateStateMult #(int N=3)(
+module gateStateMult #(int N=1)(
         input clk,
         input reset,
         input  complexNum state[(2^N)-1:0],
@@ -39,23 +40,30 @@ module gateStateMult #(int N=3)(
         output complexNum outState[(2^N)-1:0]
     );
     
-    //Makes an extra large matrix to temporarily store outputs of qmult/qadd modules 
-    compNumTemp temp [(2^N)-1:0][(2^(N+1))-3:0];
+    compNumTemp temp1 [(2^N)-1:0][(2^(N+1))-3:0];
+	//Makes an extra large matrix to temporarily store outputs of qmult/qadd modules 
+    complexNum temp2 [(2^N)-1:0][(2^(N+1))-3:0];
     logic overflow;
     genvar row, col, i;
     //Generates a qmult module for each gate matrix element and its corresponding state vector element, then adds them all up in binary tree structure
     generate
     for (row = 0; row < 2^N; row=row+1) begin:gen1
     for (col = 0; col < 2^N; col=col+1) begin:gen2
-        qmult #(6, 8) mult(gate[row][col].a, state[col].a, temp[row][col].a, overflow);
-        qmult #(6, 8) mult1(gate[row][col].a, state[col].b, temp[row][col].ab, overflow);
-        qmult #(6, 8) mult2(gate[row][col].b, state[col].a, temp[row][col].ba, overflow);
-        qmult #(6, 8) mult3(gate[row][col].b, state[col].b, temp[row][col].b, overflow);
+        qmult #(6, 8) mult1(gate[row][col].a, state[col].a, temp1[row][col].a, overflow);
+        qmult #(6, 8) mult2(gate[row][col].a, state[col].b, temp1[row][col].ab, overflow);
+        qmult #(6, 8) mult3(gate[row][col].b, state[col].a, temp1[row][col].ba, overflow);
+        qmult #(6, 8) mult4(gate[row][col].b, state[col].b, temp1[row][col].b, overflow);
+		assign temp1[row][col].negB[0] = ~temp1[row][col].b[0];
+		qadd #(6, 8) add1(temp1[row][col].a, temp1[row][col].negB, temp2[row][col].a, overflow);
+		qadd #(6, 8) add2(temp1[row][col].ab, temp1[row][col].ba, temp2[row][col].b, overflow);
+		
     end
     for (i=0; i < (2^N)-2; i=i+1) begin:gen3
-        qadd #(6, 8) add(temp[row][2*i], temp[row][(2*i)+1], temp[row][(2^N)+i], overflow);
+        qadd #(6, 8) addRe(temp2[row][2*i].a, temp2[row][(2*i)+1].a, temp2[row][(2^N)+i].a, overflow);
+		qadd #(6, 8) addIm(temp2[row][2*i].b, temp2[row][(2*i)+1].b, temp2[row][(2^N)+i].b, overflow);
     end
-        qadd #(6, 8) addFinal(temp[row][(2^(N+1))-4], temp[row][(2^(N+1))-3], outState[row], overflow);
+    qadd #(6, 8) addFinalRe(temp2[row][(2^(N+1))-4].a, temp2[row][(2^(N+1))-3].a, outState[row].a, overflow);
+	qadd #(6, 8) addFinalIm(temp2[row][(2^(N+1))-4].b, temp2[row][(2^(N+1))-3].b, outState[row].b, overflow);
     end
     endgenerate
     
