@@ -19,20 +19,20 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-typedef struct{
-    logic [7:0] a;
-    logic [7:0] b;
+typedef struct packed{
+    bit [7:0] a;
+    bit [7:0] b;
     }complexNum;
     
-typedef struct{
-    logic [7:0] a;
-    logic [7:0] ab;
-    logic[7:0] ba;
-    logic[7:0]b;
-	logic[7:0]negB;
+typedef struct packed{
+    bit [7:0] a;
+    bit [7:0] ab;
+    bit [7:0] ba;
+    bit [7:0] b;
+	bit [7:0] negB;
     }compNumTemp;
 
-module gateStateMult #(int N=2)(
+module gateStateMult #(int N=1)(
         input clk,
         input reset,
         input  complexNum state[(2**N)-1:0],
@@ -43,7 +43,7 @@ module gateStateMult #(int N=2)(
     compNumTemp temp1 [(2**N)-1:0][(2**(N+1))-3:0];
 	//Makes an extra large matrix to temporarily store outputs of qmult/qadd modules 
     complexNum temp2 [(2**N)-1:0][(2**(N+1))-3:0];
-    logic overflow;
+    bit overflow;
     genvar row, col, i;
     //Generates a qmult module for each gate matrix element and its corresponding state vector element, then adds them all up in binary tree structure
     generate
@@ -53,16 +53,17 @@ module gateStateMult #(int N=2)(
         qmult #(6, 8) mult2(gate[row][col].a, state[col].b, temp1[row][col].ab, overflow);
         qmult #(6, 8) mult3(gate[row][col].b, state[col].a, temp1[row][col].ba, overflow);
         qmult #(6, 8) mult4(gate[row][col].b, state[col].b, temp1[row][col].b, overflow);
-		assign temp1[row][col].negB[0] = ~temp1[row][col].b[0];
+		assign temp1[row][col].negB[7] = ~temp1[row][col].b[7];
+		assign temp1[row][col].negB[6:0] = temp1[row][col].b[6:0];
 		qadd #(6, 8) add1(temp1[row][col].a, temp1[row][col].negB, temp2[row][col].a);
 		qadd #(6, 8) add2(temp1[row][col].ab, temp1[row][col].ba, temp2[row][col].b);	
     end
     for (i=0; i < (2**N)-2; i=i+1) begin:gen3
-        qadd #(6, 8) addRe(temp2[row][2*i].a, temp2[row][(2*i)+1].a, temp2[row][(2^N)+i].a);
-		qadd #(6, 8) addIm(temp2[row][2*i].b, temp2[row][(2*i)+1].b, temp2[row][(2^N)+i].b);
+        qadd #(6, 8) addRe(temp2[row][2*i].a, temp2[row][(2*i)+1].a, temp2[row][(2**N)+i].a);
+		qadd #(6, 8) addIm(temp2[row][2*i].b, temp2[row][(2*i)+1].b, temp2[row][(2**N)+i].b);
     end
-    qadd #(6, 8) addFinalRe(temp2[row][(2^(N+1))-4].a, temp2[row][(2^(N+1))-3].a, outState[row].a);
-	qadd #(6, 8) addFinalIm(temp2[row][(2^(N+1))-4].b, temp2[row][(2^(N+1))-3].b, outState[row].b);
+    qadd #(6, 8) addFinalRe(temp2[row][(2**(N+1))-4].a, temp2[row][(2**(N+1))-3].a, outState[row].a);
+	qadd #(6, 8) addFinalIm(temp2[row][(2**(N+1))-4].b, temp2[row][(2**(N+1))-3].b, outState[row].b);
     end
     endgenerate
     
