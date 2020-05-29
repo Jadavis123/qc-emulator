@@ -87,32 +87,22 @@ int main()
  outbyte('Z');
  outbyte('\n'); // line feed
 
- while
-	 ((data = XIOModule_Recv(&iomodule, rx_buf, 1)) == 0);
- xil_printf("The number of bytes received was %d\n\r", data);
- xil_printf("Recv: The first received num was %d\n\r", rx_buf[0]);
- while
-	 ((data = XIOModule_Recv(&iomodule, rx_buf, 1)) == 0);
- xil_printf("The number of bytes received was %d\n\r", data);
- xil_printf("Recv: The second received num was %d\n\r", rx_buf[0]);
- while
-	 ((data = XIOModule_Recv(&iomodule, rx_buf, 1)) == 0);
- xil_printf("The number of bytes received was %d\n\r", data);
- xil_printf("Recv: The third received num was %d\n\r", rx_buf[0]);
- while
-	 ((data = XIOModule_Recv(&iomodule, rx_buf, 1)) == 0);
- xil_printf("The number of bytes received was %d\n\r", data);
- xil_printf("Recv: The fourth received num was %d\n\r", rx_buf[0]);
+ while(1)
+ {
+	 while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+	 xil_printf("%c\n\r", rx_buf[0]);
+ }
+
 
 // // Another way to receive a single character
 // rx_buf[0] = inbyte();
 // xil_printf("inbyte: The received char was %c\n\r", rx_buf[0]);
 
- while (1)
- {
-	 data = XIOModule_DiscreteRead(&iomodule, 1);
-	 XIOModule_DiscreteWrite(&iomodule, 1, data);
- }
+// while (1)
+// {
+//	 data = XIOModule_DiscreteRead(&iomodule, 1);
+//	 XIOModule_DiscreteWrite(&iomodule, 1, data);
+// }
 
  cleanup_platform();
  return 0;
