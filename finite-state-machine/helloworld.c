@@ -74,10 +74,11 @@ int main()
  data = XIOModule_Start(&iomodule);
 
  microblaze_register_handler(XIOModule_DeviceInterruptHandler, XPAR_IOMODULE_0_DEVICE_ID);
-     XIOModule_Connect(&iomodule, XIN_IOMODULE_GPI_2_INTERRUPT_INTR, InterruptFlagSet, NULL); // register timerTick() as our interrupt handler
-     XIOModule_Enable(&iomodule, XIN_IOMODULE_GPI_2_INTERRUPT_INTR);
-     microblaze_enable_interrupts();
+ XIOModule_Connect(&iomodule, XIN_IOMODULE_GPI_2_INTERRUPT_INTR, InterruptFlagSet, NULL);
+ XIOModule_Enable(&iomodule, XIN_IOMODULE_GPI_2_INTERRUPT_INTR);
+ microblaze_enable_interrupts();
 
+ print("Starting\n\r");
  while(count < numInput)
  {
 	 while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
@@ -89,6 +90,7 @@ int main()
 	 count++;
  }
 
+ print("Receiving done\n\r");
  while(1)
  {
 	while(int_flag == 0);

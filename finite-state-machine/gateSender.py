@@ -21,6 +21,7 @@ outState = qt.basis(2**numQ) - qt.basis(2**numQ) #empty state of appropriate siz
 stateNotNorm = qt.basis(2**numQ, 0) + qt.basis(2**numQ, 2)
 state = stateNotNorm.unit() #normalized input state
 gate = gate_expand_1toN(snot(), numQ, 1) #testing gate - currently I x H
+print(ser.readline().rstrip())
 for i in range(2**numQ): #write each element of input state to serial as 8-bit fixed pt
     probAmp = state.__getitem__(i)[0][0]
     ser.write(numToByte(probAmp.real))
@@ -31,6 +32,7 @@ for j in range(2**numQ): #write each element of input gate to serial as 8-bit fi
     for num in row:
         ser.write(numToByte(num.real))
         ser.write(numToByte(num.imag))
+print(ser.readline().rstrip())
 while (count < 2**numQ): #read each element of output state and convert to float, then put into outState
     num = byteToNum(ser.readline().rstrip().lstrip()[0])
     outState += num*qt.basis(2**numQ, count)
