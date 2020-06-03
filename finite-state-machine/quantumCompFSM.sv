@@ -25,7 +25,8 @@ module quantumCompFSM(
     input reset,
     input btnC,
     input RsRx,
-    output RsTx
+    output RsTx,
+    output [7:0] led
     );
     
     parameter N=2;
@@ -38,11 +39,11 @@ module quantumCompFSM(
     parameter SEND_STATE_IMAG = 3'b110;
     
     logic send_ready, load_ready;
-    logic[7:0] send_temp, load_temp;
+    logic led_flag = 1'b0;
+    logic [7:0] send_temp, load_temp;
     logic [2:0] fState = RESET;
     
-    int row = 0;
-    int col = 0;
+    int row, col;
     parameter max = 2**N;
     
     complexNum gate[max-1:0][max-1:0];
@@ -60,15 +61,17 @@ module quantumCompFSM(
     microblaze_mcs_0 your_instance_name (
     .Clk(clk),                        // input wire Clk
     .Reset(btnC),                    // input wire Reset
-    .GPI2_Interrupt(),  // output wire GPI2_Interrupt
+    .GPI1_Interrupt(),  // output wire GPI2_Interrupt
     .INTC_IRQ(),              // output wire INTC_IRQ
     .UART_rxd(RsRx),              // input wire UART_rxd
     .UART_txd(RsTx),              // output wire UART_txd
-    .GPIO1_tri_i(send_temp),        // input wire [7 : 0] GPIO1_tri_i
+    .GPIO1_tri_i(send_ready),        // input wire [0 : 0] GPIO1_tri_i
     .GPIO1_tri_o(load_temp),        // output wire [7 : 0] GPIO1_tri_o
-    .GPIO2_tri_i(send_ready),        // input wire [0 : 0] GPIO2_tri_i
+    .GPIO2_tri_i(send_temp),        // input wire [7 : 0] GPIO2_tri_i
     .GPIO2_tri_o(load_ready)        // output wire [0 : 0] GPIO2_tri_o
     );
+    
+    assign led[0] = led_flag;
     
     always @(posedge clk) begin
         case(fState)
@@ -76,7 +79,8 @@ module quantumCompFSM(
                 row <= 0;
                 col <= 0;
                 send_ready <= 1'b0;
-                fState <= LOAD_STATE_IMAG;
+                fState <= LOAD_STATE_REAL;
+                led_flag <= led_flag;
                 end
             LOAD_STATE_REAL: begin
                 if (load_ready) begin
@@ -86,9 +90,10 @@ module quantumCompFSM(
                 else begin
                     fState <= LOAD_STATE_REAL;
                     end
-                row <= 0;
-                col <= 0;
+                row <= row;
+                col <= col;
                 send_ready <= 1'b0;
+                led_flag <= led_flag;
                 end
             LOAD_STATE_IMAG: begin
                 if (~load_ready) begin
@@ -108,6 +113,7 @@ module quantumCompFSM(
                     end
                 row <= row;
                 send_ready <= 1'b0;
+                led_flag <= led_flag;
                 end
             LOAD_GATE_REAL: begin
                 if (load_ready) begin
@@ -120,30 +126,39 @@ module quantumCompFSM(
                 row <= row;
                 col <= col;
                 send_ready <= 1'b0;
+                led_flag <= led_flag;
                 end
             LOAD_GATE_IMAG: begin
                 if (~load_ready) begin
-                    if (col == max-1 && row == max-1) begin
+                    if (col == max-1) begin
+                        if (row == max-1) begin
                         gate[row][col].b <= load_temp;
-                        row <= 0;
-                        col <= 0;
-                        fState <= SEND_STATE_REAL;
-                        end
-                    else if (col == max-1 && row != max-1) begin
-                        gate[row][col].b <= load_temp;
-                        row <= row+1;
-                        col <= 0;
-                        fState <= LOAD_GATE_REAL;
+                            row <= 0;
+                            col <= 0;
+                            fState <= SEND_STATE_REAL;
+                            led_flag <= led_flag;
+                            end
+                        else begin
+                            gate[row][col].b <= load_temp;
+                            row <= row+1;
+                            col <= 0;
+                            fState <= LOAD_GATE_REAL;
+                            led_flag <= 1'b1;
+                            end
                         end
                     else begin
                         gate[row][col].b <= load_temp;
                         row <= row;
                         col <= col+1;
                         fState <= LOAD_GATE_REAL;
+                        led_flag <= led_flag;
                         end
                     end
                 else begin
                     fState <= LOAD_STATE_IMAG;
+                    led_flag <= led_flag;
+                    row <= row;
+                    col <= col;
                     end
                 send_ready <= 1'b0;
                 end
@@ -155,9 +170,10 @@ module quantumCompFSM(
                 else begin
                     fState <= SEND_STATE_REAL;
                     end
-                row <= 0;
-                col <= 0;
+                row <= row;
+                col <= col;
                 send_ready <= 1'b0;
+                led_flag <= led_flag;
                 end
             SEND_STATE_IMAG: begin
                 if (~load_ready) begin
@@ -177,6 +193,7 @@ module quantumCompFSM(
                     end
                 row <= row;
                 send_ready <= 1'b1;
+                led_flag <= led_flag;
                 end
         endcase
     end
