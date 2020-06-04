@@ -38,8 +38,7 @@ module quantumCompFSM(
     parameter SEND_STATE_REAL = 3'b101;
     parameter SEND_STATE_IMAG = 3'b110;
     
-    logic send_ready, load_ready;
-    logic led_flag = 1'b0;
+    logic load_ready;
     logic [7:0] send_temp, load_temp;
     logic [2:0] fState = RESET;
     
@@ -61,26 +60,21 @@ module quantumCompFSM(
     microblaze_mcs_0 your_instance_name (
     .Clk(clk),                        // input wire Clk
     .Reset(btnC),                    // input wire Reset
-    .GPI1_Interrupt(),  // output wire GPI2_Interrupt
-    .INTC_IRQ(),              // output wire INTC_IRQ
     .UART_rxd(RsRx),              // input wire UART_rxd
     .UART_txd(RsTx),              // output wire UART_txd
-    .GPIO1_tri_i(send_ready),        // input wire [0 : 0] GPIO1_tri_i
+    .GPIO1_tri_i(send_temp),        // input wire [7 : 0] GPIO1_tri_i
     .GPIO1_tri_o(load_temp),        // output wire [7 : 0] GPIO1_tri_o
-    .GPIO2_tri_i(send_temp),        // input wire [7 : 0] GPIO2_tri_i
     .GPIO2_tri_o(load_ready)        // output wire [0 : 0] GPIO2_tri_o
     );
     
-    assign led[0] = led_flag;
+    assign led = outState[2].a;
     
     always @(posedge clk) begin
         case(fState)
             RESET: begin
                 row <= 0;
                 col <= 0;
-                send_ready <= 1'b0;
                 fState <= LOAD_STATE_REAL;
-                led_flag <= led_flag;
                 end
             LOAD_STATE_REAL: begin
                 if (load_ready) begin
@@ -92,8 +86,6 @@ module quantumCompFSM(
                     end
                 row <= row;
                 col <= col;
-                send_ready <= 1'b0;
-                led_flag <= led_flag;
                 end
             LOAD_STATE_IMAG: begin
                 if (~load_ready) begin
@@ -110,10 +102,9 @@ module quantumCompFSM(
                     end
                 else begin
                     fState <= LOAD_STATE_IMAG;
+                    col <= col;
                     end
                 row <= row;
-                send_ready <= 1'b0;
-                led_flag <= led_flag;
                 end
             LOAD_GATE_REAL: begin
                 if (load_ready) begin
@@ -125,8 +116,6 @@ module quantumCompFSM(
                     end
                 row <= row;
                 col <= col;
-                send_ready <= 1'b0;
-                led_flag <= led_flag;
                 end
             LOAD_GATE_IMAG: begin
                 if (~load_ready) begin
@@ -135,32 +124,27 @@ module quantumCompFSM(
                         gate[row][col].b <= load_temp;
                             row <= 0;
                             col <= 0;
-                            fState <= SEND_STATE_REAL;
-                            led_flag <= led_flag;
+                            fState <= SEND_STATE_REAL;                           
                             end
                         else begin
                             gate[row][col].b <= load_temp;
                             row <= row+1;
                             col <= 0;
-                            fState <= LOAD_GATE_REAL;
-                            led_flag <= 1'b1;
+                            fState <= LOAD_GATE_REAL;                            
                             end
                         end
                     else begin
                         gate[row][col].b <= load_temp;
                         row <= row;
                         col <= col+1;
-                        fState <= LOAD_GATE_REAL;
-                        led_flag <= led_flag;
+                        fState <= LOAD_GATE_REAL;                        
                         end
                     end
                 else begin
-                    fState <= LOAD_STATE_IMAG;
-                    led_flag <= led_flag;
+                    fState <= LOAD_GATE_IMAG;                    
                     row <= row;
                     col <= col;
                     end
-                send_ready <= 1'b0;
                 end
             SEND_STATE_REAL: begin
                 if (load_ready) begin
@@ -172,8 +156,6 @@ module quantumCompFSM(
                     end
                 row <= row;
                 col <= col;
-                send_ready <= 1'b0;
-                led_flag <= led_flag;
                 end
             SEND_STATE_IMAG: begin
                 if (~load_ready) begin
@@ -190,10 +172,9 @@ module quantumCompFSM(
                     end
                 else begin
                     fState <= SEND_STATE_IMAG;
+                    col <= col;
                     end
                 row <= row;
-                send_ready <= 1'b1;
-                led_flag <= led_flag;
                 end
         endcase
     end

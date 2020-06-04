@@ -53,75 +53,51 @@
 
 //Quantum Computer Finite State Machine
 
-volatile char int_flag = 0;
-void InterruptFlagSet(void* ref){
-  int_flag = 1;
-}
 
 int main()
 {
- init_platform();
+init_platform();
+int count = 0;
+int numQ = 2;
+int numStates = (1 << numQ);
+int numInput = numStates * (numStates + 1);
+u32 data;
+XIOModule iomodule;
+u8 rx_buf[10];
+u32 temp;
+u8 temp2;
+u32 high = 1;
+u32 low = 0;
 
- int count = 0;
- int numQ = 2;
- int numStates = (1 << numQ);
- int numInput = numStates * (numStates + 1);
- u32 data;
- XIOModule iomodule;
- u8 rx_buf[10];
- u32 temp;
- u8 temp2;
- u32 high = 1;
- u32 low = 0;
+data = XIOModule_Initialize(&iomodule, XPAR_IOMODULE_0_DEVICE_ID);
+data = XIOModule_Start(&iomodule);
 
- data = XIOModule_Initialize(&iomodule, XPAR_IOMODULE_0_DEVICE_ID);
- data = XIOModule_Start(&iomodule);
+while(count < numInput)
+{
+	while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+	temp = rx_buf[0];
+	XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
+	XIOModule_DiscreteWrite(&iomodule, 1, temp);
+	while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+	temp = rx_buf[0];
+	XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
+	XIOModule_DiscreteWrite(&iomodule, 1, temp);
+	count++;
+}
 
- microblaze_register_handler(XIOModule_DeviceInterruptHandler, XPAR_IOMODULE_0_DEVICE_ID);
- XIOModule_Connect(&iomodule, XIN_IOMODULE_GPI_1_INTERRUPT_INTR, InterruptFlagSet, NULL);
- XIOModule_Enable(&iomodule, XIN_IOMODULE_GPI_1_INTERRUPT_INTR);
- microblaze_enable_interrupts();
+count = 0;
 
- print("Starting\n\r");
- while(count < numInput)
- {
-	 xil_printf("Receive %d:\n\r", count);
-	 while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
-	 xil_printf("%c\n\r", rx_buf[0]);
-	 temp = rx_buf[0];
-	 XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
-	 XIOModule_DiscreteWrite(&iomodule, 1, temp);
-	 while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
-	 xil_printf("%c\n\r", rx_buf[0]);
-	 temp = rx_buf[0];
-	 XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
-	 XIOModule_DiscreteWrite(&iomodule, 1, temp);
-	 count++;
- }
-
- print("Receiving done\n\r");
- count = 0;
-
- while(1)
- {
-	print("Waiting for interrupt\n\r");
-	while(int_flag == 0);
-	print("Interrupt received\n\r");
-	while(count < numStates)
-	{
-		xil_printf("Send %d:\n\r", count);
-		data = XIOModule_DiscreteRead(&iomodule, 2);
-		temp2 = data;
-		xil_printf("%c\n\r", temp2);
-		XIOModule_DiscreteWrite(&iomodule, 2, high);
-		data = XIOModule_DiscreteRead(&iomodule, 2);
-		temp2 = data;
-		xil_printf("%c\n\r", temp2);
-		XIOModule_DiscreteWrite(&iomodule, 2, low);
-		count++;
-	}
-	int_flag = 0;
- }
+while(count < numStates){
+	XIOModule_DiscreteWrite(&iomodule, 2, high);
+	data = XIOModule_DiscreteRead(&iomodule, 1);
+	temp2 = data;
+	xil_printf("%c\n\r", temp2);
+	XIOModule_DiscreteWrite(&iomodule, 2, low);
+	data = XIOModule_DiscreteRead(&iomodule, 1);
+	temp2 = data;
+	xil_printf("%c\n\r", temp2);
+	count++;
+}
 
  cleanup_platform();
  return 0;
