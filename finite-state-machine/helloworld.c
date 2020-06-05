@@ -59,7 +59,7 @@ int main()
 init_platform();
 int count = 0;
 int numQ = 2;
-int numStates = (1 << numQ);
+int numStates = (1 << numQ); //1<<numQ is equivalent to 2^numQ, but simpler
 int numInput = numStates * (numStates + 1);
 u32 data;
 XIOModule iomodule;
@@ -76,12 +76,12 @@ while(count < numInput)
 {
 	while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 	temp = rx_buf[0];
-	XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
 	XIOModule_DiscreteWrite(&iomodule, 1, temp);
+	XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
 	while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 	temp = rx_buf[0];
-	XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
 	XIOModule_DiscreteWrite(&iomodule, 1, temp);
+	XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
 	count++;
 }
 

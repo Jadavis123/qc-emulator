@@ -26,7 +26,7 @@ module quantumCompFSM(
     input btnC,
     input RsRx,
     output RsTx,
-    output [7:0] led
+    output [15:0] led
     );
     
     parameter N=2;
@@ -38,7 +38,7 @@ module quantumCompFSM(
     parameter SEND_STATE_REAL = 3'b101;
     parameter SEND_STATE_IMAG = 3'b110;
     
-    logic load_ready;
+    bit load_ready;
     logic [7:0] send_temp, load_temp;
     logic [2:0] fState = RESET;
     
@@ -67,7 +67,8 @@ module quantumCompFSM(
     .GPIO2_tri_o(load_ready)        // output wire [0 : 0] GPIO2_tri_o
     );
     
-    assign led = outState[2].a;
+    assign led[7:0] = state[0].b;
+    assign led[15] = load_ready;
     
     always @(posedge clk) begin
         case(fState)
