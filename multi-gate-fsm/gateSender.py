@@ -30,34 +30,30 @@ LAST.append(0)
 #Initial state
 state = qt.basis(2**numQ, 2)
 #-----------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+#Gates (operate on state from highest to lowest)
+gates = []
+gates.append(gate_expand_1toN(snot(), numQ, 0))
+gates.append(cnot(numQ, 0, 1))
+#-----------------------------------------------------------------------------
+
 for i in range(2**numQ): #write each element of input state to serial as 8-bit fixed pt
     probAmp = state.__getitem__(i)[0][0]
     ser.write(numToByte(probAmp.real))
     ser.write(numToByte(probAmp.imag))
 
-#-----------------------------------------------------------------------------
-#Gate 1: Hadamard acting on 0th qubit
-gate = gate_expand_1toN(snot(), numQ, 0)
-ser.write(NOT_LAST)
-#-----------------------------------------------------------------------------
-for j in range(2**numQ): #write each element of input gate to serial as 8-bit fixed pt
-    rowArray = gate.__getitem__(j)
-    row = rowArray[0]
-    for num in row:
-        ser.write(numToByte(num.real))
-        ser.write(numToByte(num.imag))
-
-#-----------------------------------------------------------------------------
-#Gate 2 (last): CNOT with 0th qubit as control, 1st qubit as target
-gate = cnot(numQ, 0, 1)
-ser.write(LAST)
-#-----------------------------------------------------------------------------    
-for j in range(2**numQ): #write each element of input gate to serial as 8-bit fixed pt
-    rowArray = gate.__getitem__(j)
-    row = rowArray[0]
-    for num in row:
-        ser.write(numToByte(num.real))
-        ser.write(numToByte(num.imag))
+for gate in gates :
+    if (gate == gates[-1]):    
+        ser.write(LAST)
+    else:
+        ser.write(NOT_LAST)
+    for j in range(2**numQ): #write each element of input gates to serial as 8-bit fixed pt
+        rowArray = gate.__getitem__(j)
+        row = rowArray[0]
+        for num in row:
+            ser.write(numToByte(num.real))
+            ser.write(numToByte(num.imag))
 
 #Receive output
 while (count < 2**numQ): #read each element of output state and convert to float, then put into outState
