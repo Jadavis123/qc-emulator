@@ -50,6 +50,7 @@
 #include "xil_printf.h"
 #include "xparameters.h"
 #include "xiomodule.h"
+#include <stdbool.h>
 
 //Quantum Computer Finite State Machine
 
@@ -59,7 +60,6 @@ int main()
 init_platform();
 int count = 0;
 int gateCount = 0;
-int gateMax = 2; //number of gates
 int numQ = 2; //number of qubits
 int numState = (1 << numQ); //1<<numQ is equivalent to 2^numQ, but simpler
 int numGate = numState * numState;
@@ -67,10 +67,11 @@ u32 data;
 XIOModule iomodule;
 u8 rx_buf[10];
 u8 next_flag[10];
-u32 temp;
+u32 temp, temp3;
 u8 temp2;
 u32 high = 1;
 u32 low = 0;
+bool gate_next;
 
 data = XIOModule_Initialize(&iomodule, XPAR_IOMODULE_0_DEVICE_ID);
 data = XIOModule_Start(&iomodule);
@@ -82,20 +83,31 @@ while(1){
 		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 		temp = rx_buf[0];
 		XIOModule_DiscreteWrite(&iomodule, 1, temp);
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+		temp3 = rx_buf[0];
+		XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 		XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
 		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 		temp = rx_buf[0];
 		XIOModule_DiscreteWrite(&iomodule, 1, temp);
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+		temp3 = rx_buf[0];
+		XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 		XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
 		count++;
 	}
 
 	count = 0;
 
+	gate_next = true;
 	//Loop for continually receiving gates until finished
-	while(gateCount < gateMax)
+	while(gate_next)
 	{
 		while (XIOModule_Recv(&iomodule, next_flag, 1) == 0);
+		if (next_flag[0] == 0)
+		{
+			gate_next = false;
+		}
 		temp = next_flag[0];
 		XIOModule_DiscreteWrite(&iomodule, 3, temp); //write next flag
 		while(count < numGate)
@@ -103,10 +115,16 @@ while(1){
 			while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 			temp = rx_buf[0];
 			XIOModule_DiscreteWrite(&iomodule, 1, temp);
+			while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+			temp3 = rx_buf[0];
+			XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 			XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
 			while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
 			temp = rx_buf[0];
 			XIOModule_DiscreteWrite(&iomodule, 1, temp);
+			while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+			temp3 = rx_buf[0];
+			XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 			XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
 			count++;
 		}
@@ -122,8 +140,14 @@ while(1){
 		data = XIOModule_DiscreteRead(&iomodule, 1);
 		temp2 = data;
 		xil_printf("%c\n\r", temp2);
+		data = XIOModule_DiscreteRead(&iomodule, 2);
+		temp2 = data;
+		xil_printf("%c\n\r", temp2);
 		XIOModule_DiscreteWrite(&iomodule, 2, low);
 		data = XIOModule_DiscreteRead(&iomodule, 1);
+		temp2 = data;
+		xil_printf("%c\n\r", temp2);
+		data = XIOModule_DiscreteRead(&iomodule, 2);
 		temp2 = data;
 		xil_printf("%c\n\r", temp2);
 		count++;

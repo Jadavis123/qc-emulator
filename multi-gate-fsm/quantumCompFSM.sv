@@ -25,8 +25,7 @@ module quantumCompFSM(
     input reset,
     input btnC,
     input RsRx,
-    output RsTx,
-    output [15:0] led
+    output RsTx
     );
     
     parameter N=2;
@@ -41,7 +40,7 @@ module quantumCompFSM(
     
     bit load_ready;
     bit [7:0] new_gate;
-    logic [7:0] send_temp, load_temp;
+    logic [7:0] send_temp, send_temp2, load_temp, load_temp2;
     logic [2:0] fState = RESET;
     
     int row, col;
@@ -65,12 +64,12 @@ module quantumCompFSM(
     .UART_rxd(RsRx),              // input wire UART_rxd
     .UART_txd(RsTx),              // output wire UART_txd
     .GPIO1_tri_i(send_temp),        // input wire [7 : 0] GPIO1_tri_i
+    .GPIO2_tri_i(send_temp2),  // input wire [7 : 0] GPIO2_tri_i
     .GPIO1_tri_o(load_temp),        // output wire [7 : 0] GPIO1_tri_o
     .GPIO2_tri_o(load_ready),        // output wire [0 : 0] GPIO2_tri_o
-    .GPIO3_tri_o(new_gate)  // output wire [7 : 0] GPIO3_tri_o
+    .GPIO3_tri_o(new_gate),  // output wire [7 : 0] GPIO3_tri_o
+    .GPIO4_tri_o(load_temp2)  // output wire [7 : 0] GPIO4_tri_o
     );
-    
-    assign led[7:0] = new_gate;
     
     always @(posedge clk) begin
         case(fState)
@@ -81,7 +80,8 @@ module quantumCompFSM(
                 end
             LOAD_STATE_REAL: begin
                 if (load_ready) begin
-                    state[col].a <= load_temp;
+                    state[col].a[15:8] <= load_temp;
+                    state[col].a[7:0] <= load_temp2;
                     fState <= LOAD_STATE_IMAG;
                     end
                 else begin
@@ -93,12 +93,14 @@ module quantumCompFSM(
             LOAD_STATE_IMAG: begin
                 if (~load_ready) begin
                     if (col == max-1) begin
-                        state[col].b <= load_temp;
+                        state[col].b[15:8] <= load_temp;
+                        state[col].b[7:0] <= load_temp2;
                         col <= 0;
                         fState <= LOAD_GATE_REAL;
                         end
                     else begin
-                        state[col].b <= load_temp;
+                        state[col].b[15:8] <= load_temp;
+                        state[col].b[7:0] <= load_temp2;                        
                         col <= col+1;
                         fState <= LOAD_STATE_REAL;
                         end
@@ -111,7 +113,8 @@ module quantumCompFSM(
                 end
             LOAD_GATE_REAL: begin
                 if (load_ready) begin
-                    gate[row][col].a <= load_temp;
+                    gate[row][col].a[15:8] <= load_temp;
+                    gate[row][col].a[7:0] <= load_temp2;
                     fState <= LOAD_GATE_IMAG;
                     end
                 else begin
@@ -124,20 +127,23 @@ module quantumCompFSM(
                 if (~load_ready) begin
                     if (col == max-1) begin
                         if (row == max-1) begin
-                        gate[row][col].b <= load_temp;
+                            gate[row][col].b[15:8] <= load_temp;
+                            gate[row][col].b[7:0] <= load_temp2;
                             row <= 0;
                             col <= 0;
                             fState <= CHECK_REPEAT;                           
                             end
                         else begin
-                            gate[row][col].b <= load_temp;
+                            gate[row][col].b[15:8] <= load_temp;
+                            gate[row][col].b[7:0] <= load_temp2;
                             row <= row+1;
                             col <= 0;
                             fState <= LOAD_GATE_REAL;                            
                             end
                         end
                     else begin
-                        gate[row][col].b <= load_temp;
+                        gate[row][col].b[15:8] <= load_temp;
+                        gate[row][col].b[7:0] <= load_temp2;
                         row <= row;
                         col <= col+1;
                         fState <= LOAD_GATE_REAL;                        
@@ -162,7 +168,8 @@ module quantumCompFSM(
                 end
             SEND_STATE_REAL: begin
                 if (load_ready) begin
-                    send_temp <= outState[col].a;
+                    send_temp <= outState[col].a[15:8];
+                    send_temp2 <= outState[col].a[7:0];
                     fState <= SEND_STATE_IMAG;
                     end
                 else begin
@@ -174,12 +181,14 @@ module quantumCompFSM(
             SEND_STATE_IMAG: begin
                 if (~load_ready) begin
                     if (col == max-1) begin
-                        send_temp <= outState[col].b;
+                        send_temp <= outState[col].b[15:8];
+                        send_temp2 <= outState[col].b[7:0];
                         col <= 0;
                         fState <= RESET;
                         end
                     else begin
-                        send_temp <= outState[col].b;
+                        send_temp <= outState[col].b[15:8];
+                        send_temp2 <= outState[col].b[7:0];
                         col <= col+1;
                         fState <= SEND_STATE_REAL;
                         end
