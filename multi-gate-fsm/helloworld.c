@@ -52,8 +52,7 @@
 #include "xiomodule.h"
 #include <stdbool.h>
 
-//Quantum Computer Finite State Machine
-
+//Quantum Computer Finite State Machine - MicroBlaze code
 
 int main()
 {
@@ -73,6 +72,7 @@ u32 high = 1;
 u32 low = 0;
 bool gate_next;
 
+//Set up XIOModule on MicroBlaze for communication with PC
 data = XIOModule_Initialize(&iomodule, XPAR_IOMODULE_0_DEVICE_ID);
 data = XIOModule_Start(&iomodule);
 
@@ -80,17 +80,17 @@ while(1){
 	//Loop for receiving state
 	while(count < numState)
 	{
-		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
-		temp = rx_buf[0];
-		XIOModule_DiscreteWrite(&iomodule, 1, temp);
-		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0); //wait to receive first byte of real
+		temp = rx_buf[0]; //convert byte to u32
+		XIOModule_DiscreteWrite(&iomodule, 1, temp); //write input to 8-bit output
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0); //wait to receive second byte of real
 		temp3 = rx_buf[0];
 		XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 		XIOModule_DiscreteWrite(&iomodule, 2, high); //set the output flag high
-		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0); //wait to receive first byte of imag
 		temp = rx_buf[0];
 		XIOModule_DiscreteWrite(&iomodule, 1, temp);
-		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
+		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0); //wait to receive second byte of imag
 		temp3 = rx_buf[0];
 		XIOModule_DiscreteWrite(&iomodule, 4, temp3);
 		XIOModule_DiscreteWrite(&iomodule, 2, low); //set the output flag low
@@ -106,10 +106,10 @@ while(1){
 		while (XIOModule_Recv(&iomodule, next_flag, 1) == 0);
 		if (next_flag[0] == 0)
 		{
-			gate_next = false;
+			gate_next = false; //end loop when last gate is reached
 		}
 		temp = next_flag[0];
-		XIOModule_DiscreteWrite(&iomodule, 3, temp); //write next flag
+		XIOModule_DiscreteWrite(&iomodule, 3, temp); //write gate_next as flag for FPGA
 		while(count < numGate)
 		{
 			while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0);
@@ -136,18 +136,18 @@ while(1){
 
 	//Loop for sending out state
 	while(count < numState){
-		XIOModule_DiscreteWrite(&iomodule, 2, high);
-		data = XIOModule_DiscreteRead(&iomodule, 1);
+		XIOModule_DiscreteWrite(&iomodule, 2, high); //set flag high
+		data = XIOModule_DiscreteRead(&iomodule, 1); //read first byte of real as u32
+		temp2 = data; //convert u32 to u8 for printing as a char
+		xil_printf("%c\n\r", temp2); //print byte as char
+		data = XIOModule_DiscreteRead(&iomodule, 2); //read second byte of real
 		temp2 = data;
 		xil_printf("%c\n\r", temp2);
-		data = XIOModule_DiscreteRead(&iomodule, 2);
+		XIOModule_DiscreteWrite(&iomodule, 2, low); //set flag low
+		data = XIOModule_DiscreteRead(&iomodule, 1); //read first byte of imag
 		temp2 = data;
 		xil_printf("%c\n\r", temp2);
-		XIOModule_DiscreteWrite(&iomodule, 2, low);
-		data = XIOModule_DiscreteRead(&iomodule, 1);
-		temp2 = data;
-		xil_printf("%c\n\r", temp2);
-		data = XIOModule_DiscreteRead(&iomodule, 2);
+		data = XIOModule_DiscreteRead(&iomodule, 2); //read second byte of imag
 		temp2 = data;
 		xil_printf("%c\n\r", temp2);
 		count++;

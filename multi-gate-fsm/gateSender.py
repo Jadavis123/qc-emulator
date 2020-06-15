@@ -29,35 +29,35 @@ LAST.append(0)
 
 #-----------------------------------------------------------------------------
 #Initial state
-state = qt.basis(2**numQ, 0)
+state = qt.basis(2**numQ, 1)
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 #Gates (operate on state from highest to lowest)
 gates = []
-#gates.append(gate_expand_1toN(snot(), numQ, 0))
-gates.append(cnot(numQ, 0, 1))
-gates.append(cnot(numQ, 0, 1))
-gates.append(cnot(numQ, 0, 1))
+gates.append(gate_expand_1toN(snot(), numQ, 0))
+gates.append(gate_expand_1toN(snot(), numQ, 1))
+gates.append(qt.tensor(qt.qeye(2), qt.sigmax()))
+gates.append(gate_expand_1toN(snot(), numQ, 0))
 #-----------------------------------------------------------------------------
 
-for i in range(2**numQ): #write each element of input state to serial as 8-bit fixed pt
+for i in range(2**numQ):
     probAmp = state.__getitem__(i)[0][0]
-    re = numToByte(probAmp.real)
-    im = numToByte(probAmp.imag)
-    ser.write(re[0])
-    ser.write(re[1])
-    ser.write(im[0])
-    ser.write(im[1])
+    re = numToByte(probAmp.real) #convert real float into 16-bit fixed point
+    im = numToByte(probAmp.imag) #convert imag float into 16-bit fixed point
+    ser.write(re[0]) #first 8 bits of real component
+    ser.write(re[1]) #last 8 bits of real component
+    ser.write(im[0]) #first 8 bits of imaginary component
+    ser.write(im[1]) #last 8 bits of imaginary component
 
 for gate in gates :
-    print(gateCount)
+    #write byte that signifies whether current gate is the last one or not
     if (gateCount == len(gates)-1):    
         ser.write(LAST)
-        print("last")
     else:
         ser.write(NOT_LAST)
-    for j in range(2**numQ): #write each element of input gates to serial as 8-bit fixed pt
+    #write each value in gate to serial
+    for j in range(2**numQ):
         rowArray = gate.__getitem__(j)
         row = rowArray[0]
         for num in row:
@@ -80,6 +80,8 @@ while (count < 2**numQ): #read each element of output state and convert to float
     print(numRe, " + ", numIm, "j")
     outState += numRe*qt.basis(2**numQ, count) + numIm*1j*qt.basis(2**numQ, count)
     count+=1
+#normalize output state, unless it is empty - real states cannot be all 0 because
+#that is not normalizable, but this avoids a crash if there is a logic error
 if (outState != qt.basis(2**numQ, 0) - qt.basis(2**numQ, 0)) :
     outState = outState.unit()
 print(outState)

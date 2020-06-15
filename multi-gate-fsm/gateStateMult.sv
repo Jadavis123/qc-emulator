@@ -19,17 +19,19 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
+//data type to store complex nums
 typedef struct{
-    logic [7:0] a;
-    logic [7:0] b;
+    logic [15:0] a;
+    logic [15:0] b;
     }complexNum;
     
+//data type to store outputs of multiplying 2 complex nums
 typedef struct{
-    logic [7:0] a;
-    logic [7:0] ab;
-    logic[7:0] ba;
-    logic[7:0]b;
-	logic[7:0]negB;
+    logic [15:0] a;
+    logic [15:0] ab;
+    logic[15:0] ba;
+    logic[15:0]b;
+	logic[15:0]negB;
     }compNumTemp;
 
 module gateStateMult #(int N=2)(
@@ -49,21 +51,26 @@ module gateStateMult #(int N=2)(
     generate
     for (row = 0; row < 2**N; row=row+1) begin:gen1
     for (col = 0; col < 2**N; col=col+1) begin:gen2
-        qmult #(6, 8) mult1(gate[row][col].a, state[col].a, temp1[row][col].a, overflow);
-        qmult #(6, 8) mult2(gate[row][col].a, state[col].b, temp1[row][col].ab, overflow);
-        qmult #(6, 8) mult3(gate[row][col].b, state[col].a, temp1[row][col].ba, overflow);
-        qmult #(6, 8) mult4(gate[row][col].b, state[col].b, temp1[row][col].b, overflow);
-		assign temp1[row][col].negB[7] = ~temp1[row][col].b[7];
-		assign temp1[row][col].negB[6:0] = temp1[row][col].b[6:0];
-		qadd #(6, 8) add1(temp1[row][col].a, temp1[row][col].negB, temp2[row][col].a);
-		qadd #(6, 8) add2(temp1[row][col].ab, temp1[row][col].ba, temp2[row][col].b);	
+        //4 multipliers corresponding to FOILing 2 complex nums
+        qmult #(14, 16) mult1(gate[row][col].a, state[col].a, temp1[row][col].a, overflow);
+        qmult #(14, 16) mult2(gate[row][col].a, state[col].b, temp1[row][col].ab, overflow);
+        qmult #(14, 16) mult3(gate[row][col].b, state[col].a, temp1[row][col].ba, overflow);
+        qmult #(14, 16) mult4(gate[row][col].b, state[col].b, temp1[row][col].b, overflow);
+		//create negative copy of b^2 for addition because of i^2
+		assign temp1[row][col].negB[15] = ~temp1[row][col].b[15];
+		assign temp1[row][col].negB[14:0] = temp1[row][col].b[14:0];
+		//add real components
+		qadd #(14, 16) add1(temp1[row][col].a, temp1[row][col].negB, temp2[row][col].a);
+		//add imag components
+		qadd #(14, 16) add2(temp1[row][col].ab, temp1[row][col].ba, temp2[row][col].b);	
     end
+    //generate "binary tree" of adders to find total real and imag components
     for (i=0; i < (2**N)-2; i=i+1) begin:gen3
-        qadd #(6, 8) addRe(temp2[row][2*i].a, temp2[row][(2*i)+1].a, temp2[row][(2**N)+i].a);
-		qadd #(6, 8) addIm(temp2[row][2*i].b, temp2[row][(2*i)+1].b, temp2[row][(2**N)+i].b);
+        qadd #(14, 16) addRe(temp2[row][2*i].a, temp2[row][(2*i)+1].a, temp2[row][(2**N)+i].a);
+		qadd #(14, 16) addIm(temp2[row][2*i].b, temp2[row][(2*i)+1].b, temp2[row][(2**N)+i].b);
     end
-    qadd #(6, 8) addFinalRe(temp2[row][(2**(N+1))-4].a, temp2[row][(2**(N+1))-3].a, outState[row].a);
-	qadd #(6, 8) addFinalIm(temp2[row][(2**(N+1))-4].b, temp2[row][(2**(N+1))-3].b, outState[row].b);
+    qadd #(14, 16) addFinalRe(temp2[row][(2**(N+1))-4].a, temp2[row][(2**(N+1))-3].a, outState[row].a);
+	qadd #(14, 16) addFinalIm(temp2[row][(2**(N+1))-4].b, temp2[row][(2**(N+1))-3].b, outState[row].b);
     end
     endgenerate
     

@@ -50,12 +50,14 @@ module quantumCompFSM(
     complexNum state[max-1:0];
     complexNum outState[max-1:0];
     
+    //module that generates structure of multipliers and adders to perform
+    //gate*state operation
     gateStateMult #(N) myMult(
     clk,
     reset,
-    state,
-    gate,
-    outState
+    state, //input state
+    gate, //gate
+    outState //output state
     );
     
     microblaze_mcs_0 your_instance_name (
@@ -73,24 +75,27 @@ module quantumCompFSM(
     
     always @(posedge clk) begin
         case(fState)
-            RESET: begin
+            RESET: begin //set counters to 0 in case they haven't been already
                 row <= 0;
                 col <= 0;
                 fState <= LOAD_STATE_REAL;
                 end
             LOAD_STATE_REAL: begin
-                if (load_ready) begin
+                //load 2 bytes into state once ready flag goes high
+                if (load_ready) begin 
                     state[col].a[15:8] <= load_temp;
                     state[col].a[7:0] <= load_temp2;
                     fState <= LOAD_STATE_IMAG;
                     end
-                else begin
+                else begin //otherwise, continue waiting for flag
                     fState <= LOAD_STATE_REAL;
                     end
                 row <= row;
                 col <= col;
                 end
             LOAD_STATE_IMAG: begin
+                //load 2 bytes into state once ready flag goes low, update indices 
+                //and state according to whether state is finished or not
                 if (~load_ready) begin
                     if (col == max-1) begin
                         state[col].b[15:8] <= load_temp;
@@ -156,10 +161,13 @@ module quantumCompFSM(
                     end
                 end
             CHECK_REPEAT: begin
+                //if final gate is not yet reached, go back to loading gate and 
+                //use previous output state as new input state for next operation
                 if (new_gate[0]) begin
                     state <= outState;
                     fState <= LOAD_GATE_REAL;
                     end
+                //if final gate is reached, move forward to sending
                 else begin
                     fState <= SEND_STATE_REAL;
                     end
