@@ -80,6 +80,17 @@ while(1){
 	//Loop for receiving state
 	while(count < numState)
 	{
+		//The Python program is going to be sending 2 bytes per number, and 2 numbers per
+		//complex probability amplitude, so for each element in the state, we have to receive
+		//4 bytes. The 4 while loops are not actually doing anything (note the semicolon right
+		//after them instead of curly braces) other than waiting for the XIOModule_Recv function
+		//to receive a byte, at which point it will store the byte in rx_buf[0] and return 1,
+		//ending the loop. The byte is then converted into a u32 so it can be written to the FPGA.
+		//After receiving the 2 real bytes, it sets the load_ready output flag high so that the
+		//FPGA knows to read off the 2 bytes and load them into the state. The 2 imaginary bytes
+		//work the same way, except that it writes the flag low afterwards so that the FPGA can
+		//detect a change in the flag.
+
 		while (XIOModule_Recv(&iomodule, rx_buf, 1) == 0); //wait to receive first byte of real
 		temp = rx_buf[0]; //convert byte to u32
 		XIOModule_DiscreteWrite(&iomodule, 1, temp); //write input to 8-bit output
@@ -103,6 +114,12 @@ while(1){
 	//Loop for continually receiving gates until finished
 	while(gate_next)
 	{
+		//Before each gate, the Python program will either send a byte containing the value 0,
+		//indicating that there are no more gates coming in, or 1, indicating that there is
+		//another gate. If it is 0, it sets the gate_next bool to false so that the outer loop
+		//will end. Otherwise, loading the numbers in the gates occurs in the same way as it does
+		//for the state.
+
 		while (XIOModule_Recv(&iomodule, next_flag, 1) == 0);
 		if (next_flag[0] == 0)
 		{
@@ -136,6 +153,12 @@ while(1){
 
 	//Loop for sending out state
 	while(count < numState){
+		//Now we must write the bytes coming out of the FPGA as chars (the Python program reads
+		//them as ints, and then converts them to the appropriate fixed point number). This is
+		//essentially the reverse of the above process for receiving the state. However, this time
+		//we must set the flag before reading each num instead of after, since the FPGA has to
+		//know to load the bytes before the MicroBlaze tries to read them.
+
 		XIOModule_DiscreteWrite(&iomodule, 2, high); //set flag high
 		data = XIOModule_DiscreteRead(&iomodule, 1); //read first byte of real as u32
 		temp2 = data; //convert u32 to u8 for printing as a char

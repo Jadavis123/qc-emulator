@@ -21,14 +21,15 @@
 
 
 module quantumCompFSM(
-    input clk,
-    input reset,
-    input btnC,
-    input RsRx,
-    output RsTx
+    input clk, //clock needed for always block
+    input reset, //reset button, resets FPGA to default programming
+    input btnC, //reset button for MicroBlaze
+    input RsRx, //UART receiving line
+    output RsTx //UART transmission line
     );
     
-    parameter N=2;
+    parameter N=2; //number of qubits - currently 2 is the max that fits on this FPGA
+    //Various states for finite state machine are defined here
     parameter RESET = 3'b000;
     parameter LOAD_STATE_REAL = 3'b001;
     parameter LOAD_STATE_IMAG = 3'b010;
@@ -38,17 +39,17 @@ module quantumCompFSM(
     parameter SEND_STATE_REAL = 3'b110;
     parameter SEND_STATE_IMAG = 3'b111;
     
-    bit load_ready;
-    bit [7:0] new_gate;
-    logic [7:0] send_temp, send_temp2, load_temp, load_temp2;
-    logic [2:0] fState = RESET;
+    bit load_ready; //flag that flips whenever the MicroBlaze receives a new number for the FPGA
+    bit [7:0] new_gate; //0th bit is flag that temporarily goes high when there is a new gate
+    logic [7:0] send_temp, send_temp2, load_temp, load_temp2; //temporary storage variables
+    logic [2:0] fState = RESET; //initial state
     
-    int row, col;
-    parameter max = 2**N;
+    int row, col; //indices for moving through state/gate
+    parameter max = 2**N; //length of state vector (2^N) and each side of gate matrix
     
-    complexNum gate[max-1:0][max-1:0];
-    complexNum state[max-1:0];
-    complexNum outState[max-1:0];
+    complexNum gate[max-1:0][max-1:0]; //2^N * 2^N matrix to store current gate
+    complexNum state[max-1:0]; //2^N * 1 array to store current state
+    complexNum outState[max-1:0]; //2^N * 1 array to store output state
     
     //module that generates structure of multipliers and adders to perform
     //gate*state operation
@@ -73,6 +74,44 @@ module quantumCompFSM(
     .GPIO4_tri_o(load_temp2)  // output wire [7 : 0] GPIO4_tri_o
     );
     
+    ///////////////////////////////////////////////////////////////////////////////////
+    //Finite State Machine - starts in RESET state and follows conditional logic checks
+    //Starts in RESET state - sets counters to 0 and moves to LOAD_STATE_REAL
+    //
+    //LOAD_STATE_REAL - waits for load_ready flag to go high, then loads num into real
+    //component of current index of state. Then moves to LOAD_STATE_IMAG.
+    //
+    //LOAD_STATE_IMAG - waits for load_ready flag to go low, then loads num into imag
+    //component of current index of state. If index is at max-1, the state is finished
+    //loading, so moves to LOAD_GATE_REAL and resets counters. If index is not yet at
+    //max-1, state is not finished, so increases index by one and goes back to 
+    //LOAD_STATE_REAL
+    //
+    //LOAD_GATE_REAL - similar to LOAD_STATE_REAL, waits for load_ready to go high,
+    //then loads num into real part of appropriate position in gate (row, col) and
+    //moves to LOAD_GATE_IMAG
+    //
+    //LOAD_GATE_IMAG - waits for load_ready to go low, then loads num into imag part of
+    //appropriate position in gate. If it has reached the end of the gate (both row and
+    //col are at max-1), it resets counters and moves to CHECK_REPEAT. If it has
+    //reached the end of a row but not the last row, it resets col to 0 and adds 1 to
+    //row, then goes back to LOAD_GATE_REAL. If it has not yet reached the end of a row,
+    //it adds 1 to col and keeps row the same, then goes back to LOAD_GATE_REAL
+    //
+    //CHECK_REPEAT - once a gate is finished loading, reads the 0th bit of the new_gate
+    //flag. If it is high, there is a new gate coming in that is now operating on the 
+    //output state of the previous operation, thus we load the current outState into
+    //state and move back to LOAD_GATE_REAL with indices reset. If it is low, there is
+    //no new gate, so it moves to SEND_STATE_REAL
+    //
+    //SEND_STATE_REAL - works in the same way as LOAD_STATE_REAL, except now sends real
+    //part of current num to MicroBlaze so it can send it to the PC and moves to
+    //SEND_STATE_IMAG
+    //
+    //SEND_STATE_IMAG - works in the same way as LOAD_STATE_IMAG, except now sends imag
+    //part of current num to MicroBlaze. When it is finished, it goes back to RESET,
+    //which then goes to LOAD_GATE_REAL to await the next state/gates sent by the PC
+    ///////////////////////////////////////////////////////////////////////////////////
     always @(posedge clk) begin
         case(fState)
             RESET: begin //set counters to 0 in case they haven't been already

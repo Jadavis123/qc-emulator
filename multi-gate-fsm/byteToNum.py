@@ -5,6 +5,9 @@ Created on Fri May 29 13:06:13 2020
 @author: jacks
 """
 
+#Performs the reverse of the process described in numToByte.py to convert 2 bytes
+#to a 16-bit fixed point number
+
 def byteToNum(num1, num2):
     tot = 0.0
     negative = False

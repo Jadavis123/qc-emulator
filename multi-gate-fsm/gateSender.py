@@ -13,8 +13,9 @@ from qutip.qip.operations import cnot
 from numToByte import numToByte
 from byteToNum import byteToNum
 from measureTest import measure
+import time
 
-ser = serial.Serial('COM4', 115200)
+ser = serial.Serial('COM4', 115200)  #open COM4 port at 115200 baud
 numQ = 2 #number of qubits
 measureQ = 0 #index of qubit being measured
 count = 0
@@ -35,12 +36,15 @@ state = qt.basis(2**numQ, 1)
 #-----------------------------------------------------------------------------
 #Gates (operate on state from highest to lowest)
 gates = []
-gates.append(gate_expand_1toN(snot(), numQ, 0))
-gates.append(gate_expand_1toN(snot(), numQ, 1))
-gates.append(qt.tensor(qt.qeye(2), qt.sigmax()))
-gates.append(gate_expand_1toN(snot(), numQ, 0))
+#gates.append(gate_expand_1toN(snot(), numQ, 1))
+#gates.append(gate_expand_1toN(snot(), numQ, 1))
+#gates.append(qt.tensor(qt.qeye(2), qt.sigmax()))
+#gates.append(gate_expand_1toN(snot(), numQ, 0))
+gates.append(qt.qeye(4))
 #-----------------------------------------------------------------------------
 
+startTime = time.time() #start the timer here, since gate creation runtime is inconsistent
+#Loop through each element in state and send it to MicroBlaze
 for i in range(2**numQ):
     probAmp = state.__getitem__(i)[0][0]
     re = numToByte(probAmp.real) #convert real float into 16-bit fixed point
@@ -88,3 +92,5 @@ print(outState)
 print(measure(outState, measureQ, numQ)) #measure the chosen qubit and print the output
 
 ser.close()
+endTime = time.time()
+print("Runtime: ", endTime-startTime, " s")
