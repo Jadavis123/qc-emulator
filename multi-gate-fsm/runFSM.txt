@@ -1,0 +1,19 @@
+Required files: gateSender.py, helloworld.c, quantumCompFSM.sv, gateStateMult.sv from multi-gate-fsm folder in GitHub; Basys3_Master.xdc, 
+qadd.v, qmult.v from top folder in GitHub.
+
+1. Follow steps in Vivado instructions to set up quantumCompFSM.sv as the top module in a project, import other .sv and .v source files 
+and .xdc contstraint file, and set up MicroBlaze with helloworld.c code. When bitstream with associated ELF file is written, open the 
+hardware manager and program the device.
+
+2. Once bitstream is uploaded, the FPGA should be ready to receive state and gates from running the emulate() method after running 
+gateSender.py with the appropriate gates. It will print 4 things: first, the raw data received back from the FPGA converted to floating 
+point numbers; second, that data converted to a normalized state; third, the output of the measurement of that state; and fourth, the 
+runtime of the method.
+
+3. To change/add gates: use QuTiP commands to append each new gate to gates list in gateSender.py.
+
+4. To change number of qubits: change N in quantumCompFSM.sv, numQ in helloworld.c and gateSender.py. SV code will need to be 
+re-synthesized/implemented and a new bitstream will need to be written each time the number of qubits is changed. As of now, there is not 
+enough space on the FPGA for more than 2 qubits, and any gate that is designed to operate on fewer than N qubits can be expanded to N 
+qubits by simply taking the tensor product with the identity for the qubits that are unaffected. Because of this, I would just leave it 
+always synthesized for the max number of qubits.
