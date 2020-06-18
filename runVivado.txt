@@ -1,0 +1,50 @@
+1. Install free version of Vivado from https://www.xilinx.com/support/download.html (use version 2019.1, as 2019.2 gets rid of the SDK 
+mentioned below). Download and installation both will take a long time and take up a lot of disk space. During installation, select option 
+that includes SDK.
+
+2. Request license and copy into any folder, then click 'Copy License' in license manager and activate the license.
+
+3. Follow instructions at https://reference.digilentinc.com/reference/software/vivado/board-files?redirect=1 to install board support files
+for Basys3 board.
+
+4. Restart Vivado and when it opens, click create new project. Select RTL project and make sure 'do not specify sources at this time' is 
+selected. On the next screen, click on boards at the top and search for the Basys3 board, then double click on it (not on the text, this 
+will open some other link). Click Finish to create project.
+
+5. In Project Manager on the left, click Add Sources, then add or create design sources. On the next page, click Add Files and add 
+appropriate .v or .sv file, then click Finish.
+
+6. Download Basys3_Master.xdc from my GitHub or https://github.com/Digilent/Basys3/tree/master/Resources/XDC. Then go back to Add Sources, 
+this time selecting add or create constraints, and add the .xdc file.
+
+7. If using a project with a microblaze_mcs processor module (you can open the .v or .sv file in Vivado and look through it to see if 
+there is one), you will need to generate the core for that as well. Click on IP Catalog under the project manager, then search for 
+MicroBlaze MCS and double click on it. You will need to generate the core with the specifications in the module definition. On the MCS 
+tab, change the memory size to 32 KB. On the UART tab, enable the receiver if there is an RsRx connection in the module definiton and
+the transmitter if there is an RsTx connection. For the GPO and GPI tabs, in the module definition, GPI is represented by the 
+.GPIOX_tri_i and GPO by the .GPIOX_tri_o lines, where X is the channel for each. Add the required number of GPOs and GPIs with the 
+number of bits set to the size of whatever variable it is assigned to (e.g. if GPO1 is assigned to led and led is 8 bits wide, then 
+GPO1 must be 8 bits wide). If there is an interrupt in the module definiton, enable a rising edge interrupt on the appropriate GPI 
+(this will usually be one that is only 1 bit wide). Click Finish and let it run to generate the IP. 
+
+8. For code containing a MicroBlaze, there will also be a C file for the processor. To use this, first click Run Synthesis on the left, 
+then once that finishes, go to File->Export->Export Hardware and click ok. Then go to File->Launch SDK and create a new application 
+project. In the hardware platform section, click New, then Browse, then find the .hdf file you just created. It should be in the .sdk 
+folder in the Vivado project folder. Back on the create project screen, make sure the language is set to C and click Finish.
+
+9. Open the default helloworld.c file (in [project name] -> src on the left). Then open the appropriate helloworld.c from my GitHub and 
+copy its contents into the default helloworld.c. Save and it should generate a .elf file automatically.
+
+10. Back in Vivado, go to Tools -> Associate ELF Files and click on the 3 dots next to the top associated ELF file (the one under 
+Design Sources, not Simulation Sources). Find the .elf file for the SDK project you just made (it should be in the .sdk folder -> 
+[project name] -> Debug) and click ok to associate the ELF file.
+
+11. Under Program and Debug at the bottom of the left panel on Vivado, click Generate Bitstream and let it run. When it finishes, select
+Open Hardware Manager and hit ok (or just cancel if the hardware manager is already open).
+
+12. In the Hardware Manager, below Program and Debug, click Open Target with the FPGA plugged in. It should connect automatically to the
+FPGA. Finally, under Open Target, click Program Device, then click on xc7a35t_0.
+
+13. To monitor what the FPGA is sending/receiving from the serial console, I use PuTTY, but the SDK also should have a built in serial 
+console. At the bottom, click on SDK Terminal, then the green plus button. Add the appropriate port and baud rate and it should allow 
+you to view the serial communications.
