@@ -28,7 +28,7 @@ module quantumCompFSM(
     output RsTx //UART transmission line
     );
     
-    parameter N=2; //number of qubits - currently 2 is the max that fits on this FPGA
+    parameter N=3; //number of qubits - currently 2 is the max that fits on this FPGA
     //Various states for finite state machine are defined here
     parameter RESET = 3'b000;
     parameter LOAD_STATE_REAL = 3'b001;
@@ -51,9 +51,18 @@ module quantumCompFSM(
     complexNum state[max-1:0]; //2^N * 1 array to store current state
     complexNum outState[max-1:0]; //2^N * 1 array to store output state
     
-    //module that generates structure of multipliers and adders to perform
-    //gate*state operation
-    gateStateMult #(N) myMult(
+//    //module that generates structure of multipliers and adders to perform
+//    //gate*state operation - full real and imaginary capability
+//    gateStateMult #(N) myMult(
+//    clk,
+//    reset,
+//    state, //input state
+//    gate, //gate
+//    outState //output state
+//    );
+    
+    //multiplier module that works if gates and states are entirely real
+    gsmRealOnly #(N) myMultReal(
     clk,
     reset,
     state, //input state
