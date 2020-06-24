@@ -19,21 +19,24 @@ NOT_LAST.append(1)
 LAST = bytearray()
 LAST.append(0)
 
-numQ = 2 #number of qubits   
+numQ = 3 #number of qubits   
 measureQ = 0 #index of qubit being measured 
 
 #-----------------------------------------------------------------------------
 #Initial state
 state = qt.basis(2**numQ, 1)
+state = state.unit()
 #-----------------------------------------------------------------------------
    
 #-----------------------------------------------------------------------------
 #Gates (operate on state from highest to lowest)
 gates = []
-gates.append(gate_expand_1toN(snot(), numQ, 1))
-gates.append(gate_expand_1toN(snot(), numQ, 1))
-gates.append(qt.tensor(qt.qeye(2), qt.sigmax()))
-gates.append(gate_expand_1toN(snot(), numQ, 0))
+gates.append(qt.tensor(snot(), snot(), snot()))
+#gates.append(qt.tensor(qt.qeye(4), qt.sigmax())) #constant f ex. 1
+#gates.append(qt.qeye(8)) #constant f ex. 2
+#gates.append(cnot(numQ, 0, 2)) #balanced f ex. 1
+gates.append(qt.tensor(qt.qeye(2), cnot())) #balanced f ex. 2
+gates.append(qt.tensor(snot(), snot(), qt.qeye(2)))
 #-----------------------------------------------------------------------------
 
 def emulate():
@@ -93,6 +96,54 @@ def emulate():
     endTime = time.time()
     print("Runtime: ", endTime-startTime, " s")
 
+def emulateReal():
+    ser = serial.Serial('COM4', 115200)  #open COM4 port at 115200 baud
+    count = 0
+    gateCount = 0
+    outState = qt.basis(2**numQ) - qt.basis(2**numQ) #empty state of appropriate size
+    startTime = time.time() #start the timer here, since gate creation runtime is inconsistent
+    #Loop through each element in state and send it to MicroBlaze
+    for i in range(2**numQ):
+        probAmp = state.__getitem__(i)[0][0]
+        re = numToByte(probAmp.real) #convert real float into 16-bit fixed point
+        ser.write(re[0]) #first 8 bits of real component
+        ser.write(re[1]) #last 8 bits of real component
+    
+    for gate in gates :
+        #write byte that signifies whether current gate is the last one or not
+        if (gateCount == len(gates)-1):    
+            ser.write(LAST)
+        else:
+            ser.write(NOT_LAST)
+        #write each value in gate to serial
+        for j in range(2**numQ):
+            rowArray = gate.__getitem__(j)
+            row = rowArray[0]
+            for num in row:
+                re = numToByte(num.real)
+                ser.write(re[0])
+                ser.write(re[1])
+        gateCount+=1
+    
+    #Receive output
+    print("Receiving")
+    while (count < 2**numQ): #read each element of output state and convert to float, then put into outState
+        num1 = ser.readline().rstrip().lstrip()[0]
+        num2 = ser.readline().rstrip().lstrip()[0]
+        numRe = byteToNum(num1, num2)
+        print(numRe)
+        outState += numRe*qt.basis(2**numQ, count)
+        count+=1
+    #normalize output state, unless it is empty - real states cannot be all 0 because
+    #that is not normalizable, but this avoids a crash if there is a logic error
+    if (outState != qt.basis(2**numQ, 0) - qt.basis(2**numQ, 0)) :
+        outState = outState.unit()
+    print(outState)
+    print(measure(outState, measureQ, numQ)) #measure the chosen qubit and print the output
+    
+    ser.close()
+    endTime = time.time()
+    print("Runtime: ", endTime-startTime, " s")
 
 #Converts a floating point number to a 16-bit fixed point number, where the first
 #bit is the sign (0=positive, 1=negative), the second bit is the integer portion
