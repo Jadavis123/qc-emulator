@@ -59,7 +59,7 @@ int main()
 init_platform();
 int count = 0;
 int gateCount = 0;
-int numQ = 2; //number of qubits
+int numQ = 3; //number of qubits
 int numState = (1 << numQ); //1<<numQ is equivalent to 2^numQ, but simpler
 int numGate = numState * numState;
 u32 data;

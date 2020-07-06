@@ -40,7 +40,7 @@ gates.append(qt.tensor(snot(), snot(), qt.qeye(2)))
 #-----------------------------------------------------------------------------
 
 def emulate():
-    ser = serial.Serial('COM4', 115200)  #open COM4 port at 115200 baud
+    ser = serial.Serial('COM4', 115200, timeout=1)  #open COM4 port at 115200 baud
     count = 0
     gateCount = 0
     outState = qt.basis(2**numQ) - qt.basis(2**numQ) #empty state of appropriate size
@@ -54,6 +54,7 @@ def emulate():
         ser.write(re[1]) #last 8 bits of real component
         ser.write(im[0]) #first 8 bits of imaginary component
         ser.write(im[1]) #last 8 bits of imaginary component
+        #ser.write(complToByte(probAmp))
     
     for gate in gates :
         #write byte that signifies whether current gate is the last one or not
@@ -66,6 +67,7 @@ def emulate():
             rowArray = gate.__getitem__(j)
             row = rowArray[0]
             for num in row:
+                #ser.write(complToByte(num))
                 re = numToByte(num.real)
                 im = numToByte(num.imag)
                 ser.write(re[0])
@@ -78,9 +80,13 @@ def emulate():
     while (count < 2**numQ): #read each element of output state and convert to float, then put into outState
         num1 = ser.readline().rstrip().lstrip()[0]
         num2 = ser.readline().rstrip().lstrip()[0]
+        #num1 = ser.read(1)
+        #num2 = ser.read(1)
         numRe = byteToNum(num1, num2)
         num1 = ser.readline().rstrip().lstrip()[0]
         num2 = ser.readline().rstrip().lstrip()[0]
+        #num1 = ser.read(1)
+        #num2 = ser.read(1)
         numIm = byteToNum(num1, num2)
         print(numRe, " + ", numIm, "j")
         outState += numRe*qt.basis(2**numQ, count) + numIm*1j*qt.basis(2**numQ, count)
@@ -173,6 +179,42 @@ def numToByte(num) :
             num-=2**(-7-i)
     out2.append(tot2)
     return [out1, out2]
+
+def complToByte(amp):
+    real = amp.real
+    imag = amp.imag
+    out = bytearray()
+    tot1 = 0
+    tot2 = 0
+    if (real < 0) :
+        tot1+=128
+        real = real*-1
+    for i in range(7) :
+        if (real >= 2**(-i)):
+            tot1+=2**(6-i)
+            real-=2**(-i)
+    out.append(tot1)
+    for i in range(8) :
+        if (real >= 2**(-7-i)):
+            tot2+=2**(7-i)
+            real-=2**(-7-i)
+    out.append(tot2)
+    tot1 = 0
+    tot2 = 0
+    if (imag < 0) :
+        tot1+=128
+        imag = imag*-1
+    for i in range(7) :
+        if (imag >= 2**(-i)):
+            tot1+=2**(6-i)
+            imag-=2**(-i)
+    out.append(tot1)
+    for i in range(8) :
+        if (imag >= 2**(-7-i)):
+            tot2+=2**(7-i)
+            imag-=2**(-7-i)
+    out.append(tot2)
+    return out
 
 #Performs the reverse of the process described in numToByte.py to convert 2 bytes
 #to a 16-bit fixed point number

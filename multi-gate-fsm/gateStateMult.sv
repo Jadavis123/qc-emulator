@@ -19,11 +19,11 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-//data type to store complex nums
-typedef struct{
-    logic [15:0] a;
-    logic [15:0] b;
-    }complexNum;
+////data type to store complex nums
+//typedef struct{
+//    logic [15:0] a;
+//    logic [15:0] b;
+//    }complexNum;
     
 //data type to store outputs of multiplying 2 complex nums
 typedef struct{
