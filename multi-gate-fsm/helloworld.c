@@ -30,21 +30,6 @@
 *
 ******************************************************************************/
 
-/*
- * helloworld.c: simple test application
- *
- * This application configures UART 16550 to baud rate 9600.
- * PS7 UART (Zynq) is not initialized by this application, since
- * bootrom/bsp configures it to baud rate 115200
- *
- * ------------------------------------------------
- * | UART TYPE   BAUD RATE                        |
- * ------------------------------------------------
- *   uartns550   9600
- *   uartlite    Configurable only in HW design
- *   ps7_uart    115200 (configured by bootrom/bsp)
- */
-
 #include <stdio.h>
 #include "platform.h"
 #include "xil_printf.h"
@@ -52,7 +37,16 @@
 #include "xiomodule.h"
 #include <stdbool.h>
 
-//Quantum Computer Finite State Machine - MicroBlaze code
+//Quantum Computer Finite State Machine - MicroBlaze code  (115200 baud)
+
+//The MicroBlaze acts as an intermediate step between the PC and the FPGA that can communicate
+//with each, since they can't directly communicate with each other. Its only task is receiving
+//numbers (already converted into the proper 2-byte format) from the PC and writing them to an
+//output channel that the FPGA can read, then when all the receiving is done, read numbers from
+//an input channel that the FPGA can access and send them to the PC by printing them to the
+//serial console. It also has to handle the flag that tells the FPGA when to load/send new numbers
+//since the FPGA is running on a much faster clock (100 MHz = 10 ns per cycle vs. 115200 baud =
+//14400 bytes per second = 70 us per cycle).
 
 int main()
 {
@@ -60,14 +54,14 @@ init_platform();
 int count = 0;
 int gateCount = 0;
 int numQ = 3; //number of qubits
-int numState = (1 << numQ); //1<<numQ is equivalent to 2^numQ, but simpler
-int numGate = numState * numState;
-u32 data;
+int numState = (1 << numQ); //# elements in state - 1<<numQ is equivalent to 2^numQ, but simpler
+int numGate = numState * numState; //# elements in gate
+u32 data; //temp variable to read number from FPGA
 XIOModule iomodule;
-u8 rx_buf[10];
-u8 next_flag[10];
-u32 temp, temp3;
-u8 temp2;
+u8 rx_buf[10]; //u8 buffer to store received bytes
+u8 next_flag[10]; //u8 buffer to store gate_next flag
+u32 temp, temp3; //temp variables to convert received u8 into writable u32
+u8 temp2; //temp variable to convert u32 from FPGA to u8, printable as char
 u32 high = 1;
 u32 low = 0;
 bool gate_next;
